@@ -940,7 +940,7 @@ ospf_interface_set (struct interface *ifp)
 	  oi->area = area;
 	  ospf_area_add_if (oi->area, oi);
 	}
-      else
+      else if (co->address->family == AF_INET)
 	{
 	  add_ospf_interface(ifp, area, co);
 	}
