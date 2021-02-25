@@ -753,18 +753,17 @@ ospf_network_new (struct in_addr area_id, int format)
   return new;
 }
 
-static void
-add_ospf_interface (struct interface *ifp, struct ospf_area *area,
-                    struct connected *co)
+static void 
+add_ospf_interface (struct connected *co, struct ospf_area *area)
 {
   struct ospf_interface *oi;
 
-  oi = ospf_if_new (area->ospf, ifp, co->address);
+  oi = ospf_if_new (area->ospf, co->ifp, co->address);
   oi->connected = co;
 
   oi->area = area;
 
-  oi->params = ospf_lookup_if_params (ifp, oi->address->u.prefix4);
+  oi->params = ospf_lookup_if_params (co->ifp, oi->address->u.prefix4);
   oi->output_cost = ospf_if_get_output_cost (oi);
 
   /* Add pseudo neighbor. */
@@ -776,7 +775,7 @@ add_ospf_interface (struct interface *ifp, struct ospf_area *area,
   /* update network type as interface flag */
   /* If network type is specified previously,
      skip network type setting. */
-  oi->type = IF_DEF_PARAMS (ifp)->type;
+  oi->type = IF_DEF_PARAMS (co->ifp)->type;
 
   ospf_area_add_if (oi->area, oi);
 
@@ -786,7 +785,7 @@ add_ospf_interface (struct interface *ifp, struct ospf_area *area,
    * whenever r-id is configured instead.
    */
   if ((area->ospf->router_id.s_addr != 0)
-      && if_is_operative (ifp)) 
+      && if_is_operative (co->ifp)) 
     ospf_if_up (oi);
 }
 
@@ -807,7 +806,7 @@ update_redistributed (struct ospf *ospf, int add_to_ospf)
                 if (ospf_external_info_find_lsa (ospf, &ei->p))
                   if (!ospf_distribute_check_connected (ospf, ei))
                     ospf_external_lsa_flush (ospf, ei->type, &ei->p,
-                                             ei->ifindex /*, ei->nexthop */);
+                                              ei->ifindex /*, ei->nexthop */);
               }
             else
               {
@@ -850,7 +849,8 @@ ospf_network_set (struct ospf *ospf, struct prefix_ipv4 *p,
   ospf_network_run ((struct prefix *)p, area);
 
   /* Update connected redistribute. */
-  update_redistributed(ospf, 1); /* interfaces possibly added */
+  update_redistributed(ospf, 1);
+  
   ospf_area_check_free (ospf, area_id);
 
   return 1;
@@ -952,7 +952,7 @@ ospf_interface_set (struct interface *ifp)
 	}
       else if (co->address->family == AF_INET)
 	{
-	  add_ospf_interface(ifp, area, co);
+	  add_ospf_interface(co, area);
 	}
     }
 
@@ -1040,7 +1040,7 @@ ospf_network_run_interface (struct prefix *p, struct ospf_area *area,
 	  && ! ospf_if_table_lookup(ifp, co->address)
           && ospf_network_match_iface(co,p))
 	{
-	  add_ospf_interface(ifp, area, co);
+	  add_ospf_interface(co, area);
 	}
     }
 }
