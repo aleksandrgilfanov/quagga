@@ -256,6 +256,16 @@ ospf_lookup ()
   return listgetdata (listhead (om->ospf));
 }
 
+static int
+ospf_is_ready (struct ospf *ospf)
+{
+  /* OSPF must be on and Router-ID must be configured. */
+  if (!ospf || ospf->router_id.s_addr == 0)
+    return 0;
+  
+  return 1;
+}
+
 static void
 ospf_add (struct ospf *ospf)
 {
@@ -1087,8 +1097,8 @@ ospf_if_update (struct ospf *ospf, struct interface *ifp)
   if (!ospf)
     ospf = ospf_lookup ();
 
-  /* OSPF must be on and Router-ID must be configured. */
-  if (!ospf || ospf->router_id.s_addr == 0)
+   /* OSPF must be ready. */
+   if (!ospf_is_ready (ospf))
     return;
   
   if (OSPF_IF_PARAM_CONFIGURED(IF_DEF_PARAMS (ifp), if_area))
