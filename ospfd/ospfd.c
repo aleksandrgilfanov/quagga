@@ -913,12 +913,20 @@ ospf_network_unset (struct ospf *ospf, struct prefix_ipv4 *p,
     }
   
   /* Update connected redistribute. */
-  update_redistributed(ospf, 0); /* interfaces possibly removed */
+  update_redistributed(ospf, 0);
+  
+  ospf_area_check_free (ospf, area_id);
+  
   return 1;
 }
 
-int
-ospf_interface_set (struct interface *ifp)
+/* Ensure there's an OSPF instance, as "ip ospf area" enabled OSPF means
+ * there might not be any 'router ospf' config.
+ *
+ * Otherwise, doesn't do anything different to ospf_if_update for now
+ */
+void
+ospf_interface_area_set (struct interface *ifp)
 {
   struct ospf_area *area;
   struct listnode *cnode;
@@ -963,15 +971,15 @@ ospf_interface_set (struct interface *ifp)
   return 1;
 }
 
-int
-ospf_interface_unset (struct interface *ifp)
+void
+ospf_interface_area_unset (struct interface *ifp)
 {
   struct route_node *rn_oi, *rn;
   struct ospf *ospf;
 
   if ((ospf = ospf_lookup ()) == NULL)
-    return 1; /* Ospf not ready yet */
-
+    return; /* Ospf not ready yet */
+  
   /* Find interfaces that may need to be removed. */
   for (rn_oi = route_top (IF_OIFS (ifp)); rn_oi; rn_oi = route_next (rn_oi))
     {
@@ -981,6 +989,7 @@ ospf_interface_unset (struct interface *ifp)
 
       if ( (oi = rn_oi->info) == NULL)
 	continue;
+      
       if (oi->type == OSPF_IFTYPE_VIRTUALLINK)
 	continue;
       co = oi->connected;
@@ -1003,9 +1012,10 @@ ospf_interface_unset (struct interface *ifp)
     }
 
   /* Update connected redistribute. */
-  update_redistributed(ospf, 0); /* interfaces possibly removed */
-   return 1;
- }
+  update_redistributed (ospf, 0); /* interfaces possibly removed */
+  
+  return;
+}
 
 
 /* Check whether interface matches given network
@@ -1097,12 +1107,12 @@ ospf_if_update (struct ospf *ospf, struct interface *ifp)
   if (!ospf)
     ospf = ospf_lookup ();
 
-   /* OSPF must be ready. */
-   if (!ospf_is_ready (ospf))
+  /* OSPF must be ready. */
+  if (!ospf_is_ready (ospf))
     return;
   
   if (OSPF_IF_PARAM_CONFIGURED(IF_DEF_PARAMS (ifp), if_area))
-    ospf_interface_set (ifp);
+    ospf_interface_area_set (ifp);
   else
     {
       /* Run each netowrk for this interface. */

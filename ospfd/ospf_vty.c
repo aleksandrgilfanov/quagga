@@ -5952,7 +5952,7 @@ DEFUN (ip_ospf_area,
   
   SET_IF_PARAM (params, if_area);
   params->if_area = area_id;
-  ospf_interface_set (ifp);
+  ospf_interface_area_set (ifp);
 
   return CMD_SUCCESS;
 }
@@ -5977,7 +5977,7 @@ DEFUN (no_ip_ospf_area,
   
   OSPF_VTY_PARAM_UNSET(params, if_area, ifp, addr);
   
-  ospf_interface_unset (ifp);
+  ospf_interface_area_unset (ifp);
 
   return CMD_SUCCESS;
 }
